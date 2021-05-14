@@ -1,0 +1,392 @@
+<?php
+
+namespace App\Language;
+
+use Illuminate\Database\Eloquent\Model;
+use App\TableModels\language\app_languages as languageTable;
+use App\TableModels\language\app_strings as app_stringsTable;
+use App\TableModels\language\app_translate_strings as app_translate_stringsTable;
+use App\TableModels\language\dev_app_translate_strings as dev_app_translate_stringsTable;
+use App\TableModels\language\app_screens as app_screensTable;
+
+use mikehaertl\pdftk\Pdf;
+class language extends Model
+{
+    //
+    public function add_language_types_admin($request){
+        $language = $request->language;
+        $languages = new languageTable();
+        $success=0;
+        $language_type_exsist=$languages->where("language",$language)
+        ->first();
+        if(strlen($language)<3){
+            $data="Language type name length Shuold be more than 3 words!";
+            $success=0;
+            return ["success"=>$success,"data"=>$data];
+        }
+        if(!$language_type_exsist){
+            try{
+                $data= $languages->insert([
+                     'language' => $language,
+                     'current_version'=>1,
+                     'new_version'=>1,
+                 ]);
+                 $data="Language Added Successfully";
+                 $success=1;
+             }catch(\Exception $exception){
+                 $success=0;
+                 $data= $exception->getMessage();
+             }
+        }else{
+            $success=0;
+            $data= "Language Type Already Exsist";
+        }
+
+        return ["success"=>$success,"data"=>$data];
+    }
+    public function add_screen_admin($request){
+        $screen_name = $request->screen_name;
+        $platform=$request->platform;
+        $screensTable = new app_screensTable();
+        $success=0;
+        $screen_exsist=$screensTable->where(["screen_name"=>$screen_name,"platform"=>$platform])->first();
+            if(strlen($screen_name)<3){
+                $data="Screen Name length Shuold be more than 3 words!";
+                $success=0;
+                return ["success"=>$success,"data"=>$data];
+            }
+            if(!$screen_exsist){
+                try{
+                $data= $screensTable->insert([
+                        'screen_name' => $screen_name,
+                        'platform'=>$platform
+                    ]);
+
+                    $data="Screen Added Successfully";
+                    $success=1;
+                }catch(\Exception $exception){
+                    $success=0;
+                    $data= $exception->getMessage();
+                }
+            }else{
+                $data="Screen Already Exsit";
+                $success=0;
+            }
+        return ["success"=>$success,"data"=>$data];
+    }
+    public function get_screen_admin($request){
+        $platform = $request->platform;
+
+        $screensTable = new app_screensTable();
+        $success=0;
+        try{
+            $data= collect($screensTable->where(["platform"=>$platform])->get())->keyBy('id');
+            $data['0']=  [
+                "id"=> null,
+                "screen_name"=> "All",
+                "reg_date"=> "2021-04-20 16:35:01"
+            ];
+            $success=1;
+        }catch(\Exception $exception){
+            $success=0;
+            $data= $exception->getMessage();
+        }
+        return ["success"=>$success,"data"=>$data];
+    }
+    public function add_new_word_admin ($request){
+        $english_string = $request->english_string;
+        $screenId = $request->screenId;
+        $platform = $request->platform;
+        $app_strings_table = new app_stringsTable();
+        $success=0;
+        if(strlen($english_string)<2){
+            $data="Word length Shuold be more than 2 words!";
+            $success=0;
+            return ["success"=>$success,"data"=>$data];
+        }
+        $string_exsist=$app_strings_table->where("english_string",$english_string)
+        ->where("screen_id",$screenId)->first();
+        // return $string_exsist;
+
+        if(!$string_exsist){
+            try{
+                $data= $app_strings_table->insertGetId([
+                    'english_string' => $english_string,
+                    'screen_id' => $screenId,
+                    'platform'=>$platform
+                ]);
+                $inserted_data_id=$data;
+                $temp =  (object)[];;
+
+                $temp->word_id=$inserted_data_id;
+                $temp->translation=null;
+                $temp->language_id=1;
+                $temp->screenId=$screenId;
+
+                $this->add_edit_translate_language_words_admin($temp);
+                $data="Word Added Successfully";
+                $success=1;
+            }catch(\Exception $exception){
+                $success=0;
+                $data= $exception->getMessage();
+            }
+
+        }else{
+            $data="Word/Sentence Already Exsit in the same Screen";
+            $success=0;
+        }
+
+        return ["success"=>$success,"data"=>$data];
+    }
+    public function get_language_types_admin ($request){
+
+        $languages = new languageTable();
+        $success=0;
+
+        try{
+           $data= $languages->get();
+           $data=$data->keyBy('id');
+           $success=1;
+        }catch(\Exception $exception){
+            $success=0;
+            $data= $exception->getMessage();
+        }
+        return ["success"=>$success,"data"=>$data];
+
+    }
+    public function get_translate_language_words_admin ($request){
+
+        $word_id=$request->word_id;
+        $screenName=$request->screenId;
+        $language_id=$request->language_id;
+        $platform=$request->platform;
+
+        $sendAll=false;
+        $success=0;
+        if($word_id==0&&$screenName==0&&$language_id==0){
+            $sendAll=true;
+        }
+        $app_strings_table = new app_stringsTable();
+        $app_strings_table=$app_strings_table
+        ->where(["platform"=>$platform])
+         ->leftJoin('app_languages', 'app_strings.id', '=', 'app_languages.id')
+         ->leftJoin('dev_app_translate_strings', 'app_strings.id', '=', 'dev_app_translate_strings.word_id');
+
+        if($screenName!=0){
+            $app_strings_table->where("app_strings.screen_id",$screenName);
+        }
+        // if($language_id!=null){
+        //     $app_strings_table->where("language_id",$language_id);
+        // }
+        if($word_id!=0){
+            $app_strings_table->where('english_string', 'like', '%'.$word_id.'%');
+        }
+        try{
+            $data=($app_strings_table->get());
+            //testng from here
+            if($language_id!=0){
+                $data=$data->groupBy('word_id');
+            //   return $data;
+                $combined_array=[];
+                foreach($data as $element){
+                    if(count($element)>1){
+                        $temp_array=$element;
+                        foreach($temp_array as $key1=>$element1){
+                            if($element1->language_id==$language_id||$element1->language_id==1){
+                                //$element1->word_id
+                                if(array_key_exists($element1->word_id,$combined_array)){
+                                    if($combined_array[$element1->word_id]->language_id==1){
+                                        $combined_array[$element1->word_id]=$element1;
+                                    }
+                                }else{
+                                    $combined_array[$element1->word_id]=$element1;
+                                }
+                            }
+                        }
+                    }else{
+                        $combined_array[]=$element[0];
+                    }
+                }
+            }
+            $data=array_values($combined_array);
+            $success=1;
+        }catch(\Exception $exception){
+            $success=0;
+            $data= $exception->getMessage();
+        }
+
+        return ["success"=>$success,"data"=>$data];
+    }
+    public function get_translate_language_words_mobile ($request){
+
+        $word_id=$request->word_id;
+        $screenName=$request->screenId;
+        $language_id=$request->language_id;
+        $platform=$request->platform;
+        $sendAll=false;
+        $success=0;
+        if($word_id==0&&$screenName==0&&$language_id==0){
+            $sendAll=true;
+        }$app_strings_table = new app_stringsTable();
+        $app_strings_table=$app_strings_table->select()
+        ->where(["app_strings.platform"=>$platform])
+         ->leftJoin('app_languages', 'app_strings.id', '=', 'app_languages.id')
+         ->leftJoin('app_translate_strings', 'app_strings.id', '=', 'app_translate_strings.word_id')
+       ->join('app_screens','app_translate_strings.screen_id','=','app_screens.id');
+
+        if($screenName!=null){
+            $app_strings_table->where("app_strings.screen_id",$screenName);
+        }
+        // if($language_id!=null){
+        //     $app_strings_table->where("language_id",$language_id);
+        // }
+        if($word_id!=null){
+            $app_strings_table->where('english_string', 'like', '%'.$word_id.'%');
+        }
+        try{
+            $data=($app_strings_table->get());
+            //testng from here
+            if($language_id!=null){
+                $data=$data->groupBy('word_id');
+            //   return $data;
+                $combined_array=[];
+                foreach($data as $element){
+                    if(count($element)>1){
+                        $temp_array=$element;
+                        foreach($temp_array as $key1=>$element1){
+                            if($element1->language_id==$language_id||$element1->language_id==1){
+                                //$element1->word_id
+                                if(array_key_exists($element1->word_id,$combined_array)){
+                                    if($combined_array[$element1->word_id]->language_id==1){
+                                        $combined_array[$element1->word_id]=$element1;
+                                    }
+                                }else{
+                                    $combined_array[$element1->word_id]=$element1;
+                                }
+
+                            //  dd($combined_array[$element1->word_id]);
+
+                            }
+                        }
+                    }else{
+                        $combined_array[]=$element[0];
+                    }
+                }
+            }
+            $data=array_values($combined_array);
+            $data= collect($data)->groupBy('screen_name');
+            $keyByArray=[];
+            foreach($data as $key=>$element){
+                $keyByArray[$key]=($element->keyBy("english_string"));
+            }
+            $data= $keyByArray;
+            $success=1;
+        }catch(\Exception $exception){
+            $success=0;
+            $data= $exception->getMessage();
+        }
+
+        return ["success"=>$success,"data"=>$data];
+    }
+
+    public function add_edit_translate_language_words_admin ($request){
+        $word_id=$request->word_id;
+        $translation=$request->translation;
+        $language_id=$request->language_id;
+        $screenId=$request->screenId;
+        $app_strings_table = new dev_app_translate_stringsTable();
+        $success=0;
+        // if word is already exsist in the database
+        $word_and_language_exsit= $app_strings_table
+        ->where("word_id",$word_id)
+        ->where("screen_id",$screenId)
+        ->where('language_id', $language_id)->get();
+        $this->change_language_version($language_id);
+
+        if(empty($word_and_language_exsit[0])){
+            try{
+                $data= $app_strings_table->insert([
+                     'word_id' => $word_id,
+                     'screen_id'=>$screenId,
+                     'language_id' => $language_id,
+                     'translation' => $translation
+                 ]);
+
+                 $data= ["message"=>"Word/Sentece is inserted","word_id"=>$word_id];
+                 $success=1;
+             }catch(\Exception $exception){
+                 $success=0;
+                 $data= $exception->getMessage();
+             }
+        }else{
+            try{
+            $data= $app_strings_table
+            ->where("word_id",$word_id)
+            ->where('language_id', $language_id)
+            ->update(['translation' => $translation]);
+            $data= ["message"=>"Word/Sentece Updated","word_id"=>$word_id];
+            $success=1;
+            }catch(\Exception $exception){
+                $success=0;
+                $data= $exception->getMessage();
+            }
+        }
+        return ["success"=>$success,"data"=>$data];
+    }
+
+    public function change_language_version($language_id){
+        $languages = new languageTable();
+        $lenguage_version=$languages->where('id', $language_id)->first();
+        $lenguage_version= $lenguage_version->current_version;
+        try{
+            $data= $languages
+            ->where('id', $language_id)
+            ->update(['new_version' => $lenguage_version+1]);
+
+            }catch(\Exception $exception){
+                $success=0;
+                $data= $exception->getMessage();
+            }
+    }
+    public function deploy_new_language_version($request){
+        $languge_id = $request->id;
+        $dev_translated_words= new dev_app_translate_stringsTable();
+        $dev_translated_words=$dev_translated_words->where("language_id",$languge_id)->get();
+        $dev_translated_words=($dev_translated_words->toArray());
+        //original tabel which show in mobile
+
+        $translated_words= new app_translate_stringsTable();
+        $success=0;
+        $data=null;
+        foreach($dev_translated_words as $key=>$element){
+
+            $id=$element['id'];
+            $translation=$element['translation'];
+            $language_id=$element['language_id'];
+            $screen_id=$element['screen_id'];
+            $word_id=$element['word_id'];
+           $translated_words->
+                updateOrInsert(
+                    ['id' => $id],
+                    [
+                    'translation'=> $translation,
+                    "language_id"=> $language_id,
+                    "screen_id"=>  $screen_id,
+                    "word_id"=> $word_id
+                    ]
+                );
+        }
+        if($translated_words->exists()){
+            $languages = new languageTable();
+            $current_version= ($languages->where("id", $languge_id)->get());
+            $current_version= $current_version[0]->current_version;
+            $data= $languages
+            ->where('id', $languge_id)
+            ->update(['current_version' => $current_version+1]);
+            $success=1;
+            $data="sucess";
+        }
+        return ["success"=>$success,"data"=>"Congractulations! Changes Has been Deployed !"];
+
+    }
+}
