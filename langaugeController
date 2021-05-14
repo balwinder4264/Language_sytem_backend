@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Language\language as languageModel;
+class language extends Controller
+{
+    //
+    public function add_language_types_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->add_language_types_admin($request);
+    }
+    public function add_new_word_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->add_new_word_admin($request);
+    }
+    public function get_language_types_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->get_language_types_admin($request);
+    }
+    public function get_translate_language_words_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->get_translate_language_words_admin($request);
+    }
+    public function add_edit_translate_language_words_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->add_edit_translate_language_words_admin($request);
+    }
+    public function add_screen_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->add_screen_admin($request);
+    }
+    public function get_screen_admin(Request $request){
+        $add_language = new languageModel();
+        return $add_language->get_screen_admin($request);
+    }
+    public function get_translate_language_words_mobile(Request $request){
+        $add_language = new languageModel();
+        return $add_language->get_translate_language_words_mobile($request);
+    }
+    public function deploy_new_language_version(Request $request){
+        $add_language = new languageModel();
+        return $add_language->deploy_new_language_version($request);
+    }
+
+}
