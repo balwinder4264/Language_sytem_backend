@@ -1,0 +1,73 @@
+CREATE TABLE app_languages (
+id INT(6) AUTO_INCREMENT PRIMARY KEY,
+language VARCHAR(30) NOT NULL unique,
+current_version VARCHAR(30),
+new_version VARCHAR(30),
+reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+select * from app_languages;
+
+
+CREATE TABLE app_strings (
+id INT(8) AUTO_INCREMENT PRIMARY KEY,
+english_string TEXT,
+screen_id VARCHAR(30),
+platform VARCHAR(30) NOT NULL ,
+reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+use gwt_galleries;
+select * from app_strings;
+
+
+CREATE TABLE app_screens (
+id INT(8) AUTO_INCREMENT PRIMARY KEY,
+screen_name TEXT,
+platform VARCHAR(30) NOT NULL ,
+reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE dev_app_translate_strings  (
+id INT(8) AUTO_INCREMENT PRIMARY KEY,
+word_id  VARCHAR(30) ,
+language_id VARCHAR(30),
+screen_id VARCHAR(30),
+translation text CHARACTER SET UTF8,
+reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE app_translate_strings (
+id INT(8) AUTO_INCREMENT PRIMARY KEY,
+word_id  VARCHAR(30) ,
+language_id VARCHAR(30),
+screen_id VARCHAR(30),
+translation text CHARACTER SET UTF8,
+reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+select * from app_translate_strings;
+
+drop table app_languages;
+drop table app_strings;
+drop table app_translate_strings;
+DROP table app_screens ;
+drop table dev_app_translate_strings;
+
+
+SELECT * from app_screens as2 ;
+SELECT * from app_languages;
+SELECT * from app_strings;
+SELECT * from app_translate_strings;
+SELECT * from dev_app_translate_strings dats ;
+
+
+
+
+
+
+
+
